@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: { chrome:"#F3F4F6", header:"#1F2937", border:"#374151", primary:"#22C55E", "primary-hover":"#16A34A" },
+                fontFamily: { sans:["Arial","Helvetica","sans-serif"] },
+                borderRadius: { DEFAULT:"0px", none:"0px", sm:"0px", md:"0px", lg:"0px", xl:"0px", full:"0px" },
+                boxShadow: { 'brutalist':'4px 4px 0 0 #374151', 'brutalist-sm':'2px 2px 0 0 #374151' }
+            }
+        }
+    };
+</script>
+<style>body { font-family: Arial, Helvetica, sans-serif; }</style>
+</head>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col antialiased">
+<header class="bg-header border-b border-border shadow-none sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center gap-3">
+<a href="/"><div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div></a>
+<a href="/"><span class="font-bold text-xl text-white tracking-tight">TestArena</span></a>
+</div>
+<span class="text-sm text-gray-400 font-mono">Sign in to your account</span>
+</div>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center py-12 px-4">
+<div class="w-full max-w-md">
+<div class="mb-8 border-l-4 border-header pl-4">
+<h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-1">Welcome Back</h1>
+<p class="text-sm text-gray-600 font-mono">Enter your credentials to continue.</p>
+</div>
+<div class="bg-white border border-border shadow-brutalist overflow-hidden">
+<div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center gap-2">
+<span class="material-symbols-outlined text-header">lock</span>
+<h2 class="text-base font-bold text-gray-900 uppercase tracking-wide">Login</h2>
+</div>
+<form id="login-form" class="p-6 space-y-5">
+<div>
+<label class="block text-xs font-bold text-gray-900 mb-1 uppercase tracking-wide" for="email">Email Address</label>
+<input class="block w-full text-sm border-border bg-gray-50 rounded-none focus:ring-0 focus:border-header focus:shadow-[2px_2px_0_0_#1F2937] transition-shadow py-2.5 px-3" id="email" type="email" placeholder="you@example.com" autocomplete="email" required/>
+</div>
+<div>
+<label class="block text-xs font-bold text-gray-900 mb-1 uppercase tracking-wide" for="password">Password</label>
+<input class="block w-full text-sm border-border bg-gray-50 rounded-none focus:ring-0 focus:border-header focus:shadow-[2px_2px_0_0_#1F2937] transition-shadow py-2.5 px-3" id="password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
+</div>
+<div id="error-bar" class="hidden px-4 py-3 border border-red-400 bg-red-50 text-red-800 font-mono text-xs"></div>
+<button id="submit-btn" class="w-full inline-flex justify-center items-center px-6 py-3 border border-border text-sm font-bold text-white bg-header hover:bg-gray-800 shadow-brutalist uppercase tracking-wider transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" type="submit">
+<span class="material-symbols-outlined text-lg mr-2" id="btn-icon">login</span>
+<span id="btn-label">Sign In</span>
+</button>
+</form>
+</div>
+<p class="mt-6 text-center text-sm text-gray-600 font-mono">
+Don't have an account?
+<a href="/signup" class="font-bold text-header underline decoration-2 decoration-primary underline-offset-2">Create one</a>
+</p>
+</div>
+</main>
+<footer class="bg-white border-t border-border py-6 mt-auto">
+<div class="max-w-7xl mx-auto px-4 text-center">
+<p class="text-xs text-gray-500 font-mono">© 2023 TestArena Systems.</p>
+</div>
+</footer>
+<script>
+// Redirect if already logged in
+if (localStorage.getItem('ta_token')) {
+    window.location.href = '/';
+}
+
+const form     = document.getElementById('login-form');
+const errBar   = document.getElementById('error-bar');
+const btnIcon  = document.getElementById('btn-icon');
+const btnLabel = document.getElementById('btn-label');
+const btn      = document.getElementById('submit-btn');
+
+function setLoading(on) {
+    btn.disabled = on;
+    btnIcon.textContent  = on ? 'hourglass_top' : 'login';
+    btnLabel.textContent = on ? 'Signing in…' : 'Sign In';
+    btn.classList.toggle('opacity-75', on);
+    btn.classList.toggle('cursor-not-allowed', on);
+}
+
+function showError(msg) {
+    errBar.textContent = msg;
+    errBar.classList.remove('hidden');
+}
+
+form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    errBar.classList.add('hidden');
+    setLoading(true);
+
+    try {
+        const res  = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email:    document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.detail || 'Login failed.'); setLoading(false); return; }
+
+        localStorage.setItem('ta_token',    data.token);
+        localStorage.setItem('ta_user_id',  data.user_id);
+        localStorage.setItem('ta_username', data.username);
+
+        const next = new URLSearchParams(location.search).get('next') || '/';
+        window.location.href = next;
+    } catch (err) {
+        showError('Network error. Please try again.');
+        setLoading(false);
+    }
+});
+</script>
+</body></html>

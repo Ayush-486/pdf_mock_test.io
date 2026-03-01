@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF to Mock Test – Test</title>
-    <link rel="stylesheet" href="/static/style.css" />
-    <!-- MathJax v3 – renders LaTeX-style math in question and option text -->
+    <title>TestArena - Mock Test</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;700&family=Courier+Prime&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <script>
         MathJax = {
             tex: {
@@ -21,113 +21,217 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary":      "#3B82F6",
+                        "success":      "#22C55E",
+                        "danger":       "#EF4444",
+                        "warning":      "#A855F7",
+                        "neutral-gray": "#E5E7EB",
+                        "border-dark":  "#374151",
+                        "surface":      "#FFFFFF",
+                        "chrome":       "#F3F4F6",
+                        "header-bg":    "#1F2937",
+                    },
+                    fontFamily: {
+                        "sans":  ["Public Sans", "Arial", "Helvetica", "sans-serif"],
+                        "serif": ["Noto Serif", "Times New Roman", "serif"],
+                        "mono":  ["Courier Prime", "Courier New", "monospace"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0px", "none": "0px", "sm": "0px",
+                        "md": "0px", "lg": "0px", "xl": "0px", "full": "0px",
+                    },
+                },
+            },
+        }
+    </script>
     <style>
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 1px solid #374151; }
+        ::-webkit-scrollbar-thumb { background: #888; border: 1px solid #374151; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .border-brutal   { border: 1px solid #374151; }
+        .border-brutal-b { border-bottom: 1px solid #374151; }
+        .border-brutal-t { border-top: 1px solid #374151; }
+        .border-brutal-r { border-right: 1px solid #374151; }
+        .border-brutal-l { border-left: 1px solid #374151; }
+
+        /* Option states */
+        .option-label { display:flex; align-items:flex-start; gap:1rem; padding:0.75rem; border:1px solid transparent; cursor:pointer; transition:background .15s; }
+        .option-label:hover { background: #eff6ff; }
+        .option-label.selected { border-color: #3B82F6; background: rgba(59,130,246,0.05); }
+
+        .radio-dot { width:20px; height:20px; min-width:20px; border:2px solid #9ca3af; background:#fff; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+        .radio-dot.checked { background:#3B82F6; border-color:#3B82F6; }
+
+        /* Palette button base */
+        .palette-btn { aspect-ratio:1; font-weight:700; font-size:0.875rem; cursor:pointer; position:relative; }
+        .palette-btn:hover { opacity:0.85; }
+        .q-notVisited     { background:#E5E7EB; color:#111827; border:1px solid #374151; }
+        .q-visited        { background:#EF4444; color:#fff;    border:1px solid #b91c1c; }
+        .q-answered       { background:#22C55E; color:#fff;    border:1px solid #15803d; }
+        .q-marked         { background:#A855F7; color:#fff;    border:1px solid #7e22ce; }
+        .q-answeredMarked { background:#A855F7; color:#fff;    border:1px solid #7e22ce; }
+        .q-current        { outline:2px solid #3B82F6; outline-offset:2px; }
+
         .diagram-notice {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 0.5rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            color: #856404;
-            margin-bottom: 0.75rem;
+            background:#fff3cd; border-left:4px solid #ffc107;
+            padding:0.5rem 0.75rem; font-size:0.9rem; color:#856404; margin-bottom:0.75rem;
         }
-
-        #s-question-list {
-            list-style: none;
-            padding: 0;
-            margin-top: 1rem;
-            max-height: 40vh;
-            overflow-y: auto;
-            font-size: 0.9rem;
-        }
-
-        #s-question-list li {
-            padding: 0.25rem 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        /* ── Question image ── */
-        #question-image-wrap {
-            margin: 0.75rem 0 1rem;
-            text-align: center;
-            display: none;
-            /* hidden by default; JS shows when image_path set */
-        }
-
-        #question-image {
-            max-width: 100%;
-            max-height: 320px;
-            border: 1px solid #d0d0d0;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-            object-fit: contain;
-        }
-
-        .question-img-caption {
-            font-size: 0.78rem;
-            color: #888;
-            margin-top: 0.35rem;
-        }
-
-        /* ── Option diagram images (one per option for image-only options) ── */
         .option-diagram {
-            display: block;
-            max-width: 280px;
-            max-height: 200px;
-            margin: 0.4rem 0 0.2rem 1.5rem;
-            border: 1px solid #d0d0d0;
-            border-radius: 4px;
-            object-fit: contain;
+            display:block; max-width:280px; max-height:200px;
+            margin:0.4rem 0 0.2rem 0; border:1px solid #d0d0d0; object-fit:contain;
         }
     </style>
 </head>
+<body class="bg-white text-gray-900 font-sans h-screen flex flex-col overflow-hidden selection:bg-blue-200">
 
-<body>
-
-    <!-- Fixed timer bar at top -->
-    <div id="timer-bar">Time Remaining: <span id="timer-display">30:00</span></div>
-
-    <div id="test-wrapper">
-        <!-- Shown while loading questions -->
-        <div id="loading-msg">Loading questions…</div>
-
-        <!-- Main test UI (hidden until questions load) -->
-        <div id="test-ui" style="display:none;">
-            <p id="question-counter"></p>
-            <p id="question-text"></p>
-
-            <!-- Embedded diagram image (shown only when image_path is set) -->
-            <div id="question-image-wrap">
-                <img id="question-image" class="question-diagram" src="" alt="Question diagram" />
-                <p class="question-img-caption">📷 Diagram extracted from PDF</p>
+    <!-- Header (always visible) -->
+    <header class="h-[60px] bg-header-bg text-white flex items-center justify-between px-4 shrink-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-white text-black p-1">
+                <span class="material-symbols-outlined text-[20px]">school</span>
             </div>
-
-            <!-- diagram-notice injected here by JS when image unavailable but flag set -->
-
-            <ul class="options-list" id="options-list"></ul>
-
-            <div id="nav-buttons">
-                <button id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
-                <button id="next-btn" onclick="navigate(1)">Next &#8594;</button>
-                <button id="submit-btn" onclick="submitTest()">Submit Test</button>
+            <h1 class="text-lg font-bold tracking-tight uppercase">TestArena</h1>
+        </div>
+        <div id="timer-wrap" class="flex flex-col items-center">
+            <span class="text-[10px] uppercase tracking-wider text-gray-400">Time Left</span>
+            <div class="border border-white px-3 py-0.5 bg-black font-mono text-xl font-bold tracking-widest text-white leading-none">
+                <span id="timer-display">--:--</span>
             </div>
         </div>
-
-        <!-- Summary shown after submit (hidden initially) -->
-        <div id="summary-section" style="display:none;">
-            <h1>Test Submitted</h1>
-            <div id="summary-box">
-                <p><strong>Total Questions:</strong> <span id="s-total"></span></p>
-                <p><strong>Attempted:</strong> <span id="s-attempted"></span></p>
-                <p><strong>Unanswered:</strong> <span id="s-unanswered"></span></p>
-            </div>
-            <h3>Question-wise Summary</h3>
-            <ul id="s-question-list"></ul>
-            <p style="margin-top:1rem;"><a href="/">&#8592; Upload another PDF</a></p>
+        <div class="flex items-center gap-4">
+            <button class="flex items-center gap-1 text-gray-300 hover:text-white transition-colors" title="Change Theme">
+                <span class="material-symbols-outlined">palette</span>
+            </button>
+            <button id="submit-btn" class="bg-success hover:bg-green-600 text-white font-bold text-sm px-6 py-2 uppercase border border-white/20 transition-colors">
+                Submit
+            </button>
         </div>
+    </header>
+
+    <!-- Loading message -->
+    <div id="loading-msg" class="flex-1 flex items-center justify-center text-gray-500 text-lg font-mono">
+        Loading questions…
+    </div>
+
+    <!-- Main test UI (hidden until questions load) -->
+    <div id="test-ui" style="display:none;" class="flex flex-1 overflow-hidden">
+
+        <!-- Left Panel: Question Area (75%) -->
+        <main class="w-3/4 flex flex-col bg-white border-brutal-r relative">
+
+            <!-- Question Header Bar -->
+            <div class="h-12 bg-chrome border-brutal-b flex items-center justify-between px-6 shrink-0">
+                <div class="flex items-center gap-4">
+                    <h2 id="question-number" class="font-bold text-lg text-primary">Question No. 1</h2>
+                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 border border-blue-200 uppercase font-bold">Single Choice</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-gray-600 uppercase">Marks</span>
+                    <div class="flex items-center text-sm font-mono font-bold bg-white border-brutal px-2 py-0.5">
+                        <span class="text-success">+4.0</span>
+                        <span class="mx-1 text-gray-400">|</span>
+                        <span class="text-danger">-1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Question Content -->
+            <div id="question-scroll-area" class="flex-1 overflow-y-auto p-8 bg-white">
+                <!-- Question image (screenshot) or text -->
+                <div id="question-display" class="border-brutal-b pb-6 mb-6"></div>
+                <!-- Options -->
+                <ul id="options-list" class="space-y-2"></ul>
+                <!-- Diagram notice for text-fallback mode -->
+                <p id="diagram-notice" class="diagram-notice" style="display:none;"></p>
+            </div>
+
+            <!-- Sticky Footer Action Bar -->
+            <div class="h-[70px] bg-white border-brutal-t px-6 flex items-center justify-between shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+                <div class="flex gap-3">
+                    <button id="prev-btn" class="h-10 px-4 border-brutal bg-white hover:bg-gray-50 text-black font-bold text-sm uppercase transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                        <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                        Previous
+                    </button>
+                    <button id="clear-btn" class="h-10 px-4 border-brutal bg-white hover:bg-gray-50 text-black font-bold text-sm uppercase transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                        Clear Response
+                    </button>
+                    <button id="mark-review-btn" class="h-10 px-4 border-brutal bg-warning hover:bg-purple-600 text-white font-bold text-sm uppercase transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">bookmark</span>
+                        Mark for Review &amp; Next
+                    </button>
+                </div>
+                <button id="save-next-btn" class="h-10 px-6 border border-green-700 bg-success hover:bg-green-600 text-white font-bold text-sm uppercase shadow-sm transition-colors flex items-center gap-2">
+                    Save &amp; Next
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- Right Panel: Legend + Palette (25%) -->
+        <aside class="w-1/4 flex flex-col bg-chrome h-full border-l border-gray-300">
+
+            <!-- Legend -->
+            <div class="p-3 bg-white border-brutal-b shrink-0">
+                <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Legend</h4>
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-medium text-gray-700">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-success border border-black/20 shrink-0"></div> Answered
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-danger border border-black/20 shrink-0"></div> Not Answered
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-neutral-gray border-brutal shrink-0"></div> Not Visited
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-warning border border-black/20 shrink-0"></div> Marked
+                    </div>
+                    <div class="flex items-center gap-2 col-span-2">
+                        <div class="w-4 h-4 bg-warning border border-black/20 shrink-0 relative">
+                            <div class="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-success rounded-full border border-white"></div>
+                        </div>
+                        Answered &amp; Marked
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section label + count -->
+            <div class="px-3 pt-2 pb-1 shrink-0 flex justify-between text-xs font-bold text-gray-500 uppercase bg-blue-50/30">
+                <span>Questions</span>
+                <span id="palette-count"></span>
+            </div>
+
+            <!-- Question Palette Grid -->
+            <div class="flex-1 overflow-y-auto p-2 bg-blue-50/30">
+                <div id="palette-grid" class="grid grid-cols-5 gap-2 content-start"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Summary section (hidden until submit) -->
+    <div id="summary-section" style="display:none;" class="flex-1 overflow-y-auto p-10 bg-white">
+        <h1 class="text-2xl font-bold uppercase border-brutal-b pb-4 mb-6">Test Submitted</h1>
+        <div class="border-brutal p-6 mb-8 inline-block bg-chrome space-y-2">
+            <p class="font-mono"><strong>Total Questions:</strong> <span id="s-total"></span></p>
+            <p class="font-mono"><strong>Attempted:</strong> <span id="s-attempted" class="text-success font-bold"></span></p>
+            <p class="font-mono"><strong>Unanswered:</strong> <span id="s-unanswered" class="text-danger font-bold"></span></p>
+        </div>
+        <h3 class="font-bold uppercase text-sm text-gray-500 mb-3">Question-wise Summary</h3>
+        <ul id="s-question-list" class="space-y-1 font-mono text-sm list-none p-0"></ul>
+        <p class="mt-8">
+            <a href="/" class="border-brutal px-4 py-2 font-bold uppercase text-sm hover:bg-gray-100 inline-block">&#8592; Upload another PDF</a>
+        </p>
     </div>
 
     <script src="/static/test.js"></script>
 </body>
-
 </html>

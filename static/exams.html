@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - My Exams</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+    darkMode: "class",
+    theme: {
+        extend: {
+            colors: {
+                chrome:  "#F3F4F6",
+                header:  "#1F2937",
+                border:  "#374151",
+                primary: "#22C55E",
+                "primary-hover": "#16A34A",
+            },
+            fontFamily: { sans: ["Arial", "Helvetica", "sans-serif"] },
+            borderRadius: {
+                DEFAULT:"0px", none:"0px", sm:"0px",
+                md:"0px", lg:"0px", xl:"0px", full:"0px"
+            },
+            boxShadow: {
+                brutalist:    "4px 4px 0 0 #374151",
+                "brutalist-sm": "2px 2px 0 0 #374151",
+            }
+        }
+    }
+};
+</script>
+</head>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col">
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="bg-header border-b border-border sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+    <div class="flex items-center">
+        <div class="flex-shrink-0 flex items-center gap-3">
+            <a href="/"><div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div></a>
+            <a href="/"><span class="font-bold text-xl text-white tracking-tight">TestArena</span></a>
+        </div>
+        <nav class="hidden md:ml-12 md:flex space-x-8">
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/">Dashboard</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-bold text-white" href="/exams">My Exams</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/reports">Reports</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/settings">Settings</a>
+        </nav>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 border-l border-gray-600 pl-4">
+            <span class="material-symbols-outlined text-gray-300 text-xl">account_circle</span>
+            <span id="header-username" class="text-sm font-bold text-white hidden sm:block">—</span>
+        </div>
+        <button id="logout-btn" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-wide border border-gray-600 px-3 py-1 hover:border-gray-400 transition-colors">Logout</button>
+    </div>
+</div>
+</div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<main class="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+
+    <div class="mb-8 border-l-4 border-header pl-4">
+        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-1">My Exams</h1>
+        <p class="text-sm text-gray-500 font-mono">All your test attempts in one place.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- ── Sidebar ───────────────────────────────────────────────────── -->
+        <div class="lg:col-span-3 space-y-6">
+
+            <div class="bg-white border border-border shadow-brutalist p-6">
+                <h2 class="text-xs font-black text-gray-500 uppercase tracking-wider mb-4">Summary</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 border border-border bg-gray-50">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-xl">play_circle</span>
+                            <span class="text-sm font-bold">Ongoing</span>
+                        </div>
+                        <span id="count-ongoing" class="text-xl font-black text-header">—</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 border border-border bg-gray-50">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-gray-400 text-xl">check_circle</span>
+                            <span class="text-sm font-bold">Completed</span>
+                        </div>
+                        <span id="count-completed" class="text-xl font-black text-header">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-header text-white border border-border shadow-brutalist p-6">
+                <h3 class="text-sm font-bold uppercase mb-2">New Test</h3>
+                <p class="text-xs text-gray-300 mb-4 font-mono">Upload a PDF to generate a fresh mock test.</p>
+                <a href="/"><button class="w-full py-2 border border-white text-white text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-header transition-colors">Upload PDF</button></a>
+            </div>
+
+        </div>
+
+        <!-- ── Exam list ──────────────────────────────────────────────────── -->
+        <div class="lg:col-span-9">
+
+            <!-- Loading -->
+            <div id="loading-state" class="bg-white border border-border shadow-brutalist p-12 flex items-center justify-center gap-3 text-gray-500 font-mono text-sm">
+                <span class="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                Loading attempts…
+            </div>
+
+            <!-- Error -->
+            <div id="error-state" class="hidden bg-white border border-border shadow-brutalist p-12 text-center">
+                <span class="material-symbols-outlined text-5xl text-red-300 mb-3 block">error_outline</span>
+                <p class="font-bold text-gray-800 uppercase mb-1">Failed to load exams</p>
+                <p class="text-xs text-gray-500 font-mono">Please refresh the page or try again later.</p>
+            </div>
+
+            <!-- Empty -->
+            <div id="empty-state" class="hidden bg-white border border-border shadow-brutalist p-16 flex flex-col items-center justify-center text-center">
+                <span class="material-symbols-outlined text-6xl text-gray-300 mb-4">folder_open</span>
+                <p class="text-lg font-black text-gray-800 uppercase mb-2">No Attempts Found</p>
+                <p class="text-sm text-gray-500 font-mono mb-6">You have not attempted any tests yet.</p>
+                <a href="/"><button class="inline-flex items-center px-6 py-3 border border-border text-sm font-bold text-white bg-primary hover:bg-primary-hover shadow-brutalist uppercase tracking-wider transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
+                    <span class="material-symbols-outlined text-lg mr-2">upload_file</span>Upload PDF
+                </button></a>
+            </div>
+
+            <!-- Attempt table -->
+            <div id="attempts-table" class="hidden bg-white border border-border shadow-brutalist overflow-hidden">
+
+                <!-- Table header -->
+                <div class="hidden sm:grid grid-cols-12 gap-0 bg-gray-100 border-b border-border px-6 py-3 text-xs font-black uppercase tracking-wider text-gray-500">
+                    <div class="col-span-4">Test Name</div>
+                    <div class="col-span-2 text-center">Questions</div>
+                    <div class="col-span-2 text-center">Score</div>
+                    <div class="col-span-2 text-right">Date</div>
+                    <div class="col-span-2 text-right pr-2">Status</div>
+                </div>
+
+                <!-- Rows rendered by JS -->
+                <div id="attempts-rows" class="divide-y divide-gray-200"></div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────────── -->
+<footer class="bg-white border-t border-border py-8 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+    <p class="text-sm text-gray-500 font-mono">© 2025 TestArena Systems.</p>
+    <div class="flex space-x-6 text-sm font-bold text-gray-600 uppercase tracking-wide">
+        <a class="hover:text-header hover:underline decoration-2" href="/privacy">Privacy</a>
+        <a class="hover:text-header hover:underline decoration-2" href="/terms">Terms</a>
+        <a class="hover:text-header hover:underline decoration-2" href="/support">Support</a>
+    </div>
+</div>
+</footer>
+
+<script>
+/* ── Auth guard ─────────────────────────────────────────────────────────── */
+const token = localStorage.getItem('ta_token');
+if (!token) { window.location.href = '/login?next=/exams'; }
+
+document.getElementById('header-username').textContent =
+    localStorage.getItem('ta_username') || 'User';
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('ta_token');
+    localStorage.removeItem('ta_user_id');
+    localStorage.removeItem('ta_username');
+    window.location.href = '/login';
+});
+
+/* ── Helpers ────────────────────────────────────────────────────────────── */
+function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+function fmtDate(isoStr) {
+    if (!isoStr) return '—';
+    try {
+        return new Date(isoStr + (isoStr.endsWith('Z') ? '' : 'Z'))
+            .toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            });
+    } catch (_) { return isoStr; }
+}
+
+function show(id)  { document.getElementById(id).classList.remove('hidden'); }
+function hide(id)  { document.getElementById(id).classList.add('hidden'); }
+
+/* ── Render one attempt row ─────────────────────────────────────────────── */
+function buildRow(attempt) {
+    const isCompleted = attempt.status === 'completed';
+
+    /* Score cell */
+    const scoreCell = isCompleted && attempt.score !== null
+        ? `<span class="font-black text-green-700">${attempt.score}</span>`
+        : `<span class="text-gray-400 font-mono">—</span>`;
+
+    /* Status badge */
+    const statusBadge = isCompleted
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-300 text-xs font-bold uppercase text-gray-700">
+               <span class="material-symbols-outlined text-sm">check_circle</span>Completed
+           </span>`
+        : `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-300 text-xs font-bold uppercase text-green-700">
+               <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Ongoing
+           </span>`;
+
+    /* Action button */
+    const action = isCompleted
+        ? `<a href="/result?id=${attempt.id}">
+               <button class="inline-flex items-center px-4 py-1.5 border border-border bg-white text-gray-900 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 hover:shadow-brutalist-sm transition-all active:translate-x-px active:translate-y-px active:shadow-none">
+                   View <span class="material-symbols-outlined text-sm ml-1">bar_chart</span>
+               </button>
+           </a>`
+        : `<a href="/test">
+               <button class="inline-flex items-center px-4 py-1.5 border border-border bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover shadow-brutalist-sm transition-all active:translate-x-px active:translate-y-px active:shadow-none">
+                   Resume <span class="material-symbols-outlined text-sm ml-1">arrow_forward</span>
+               </button>
+           </a>`;
+
+    const deleteBtn = `<button onclick="deleteAttempt(${attempt.id}, this)" class="inline-flex items-center px-3 py-1.5 border border-red-300 bg-white text-red-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:shadow-brutalist-sm transition-all active:translate-x-px active:translate-y-px active:shadow-none">
+        <span class="material-symbols-outlined text-sm">delete</span>
+    </button>`;
+
+    const date = isCompleted ? fmtDate(attempt.completed_at) : fmtDate(attempt.started_at);
+
+    /* Full row (desktop grid + mobile stack) */
+    const row = document.createElement('div');
+    row.className = 'px-6 py-4 hover:bg-gray-50 transition-colors';
+    row.innerHTML = `
+        <!-- Desktop grid -->
+        <div class="hidden sm:grid grid-cols-12 gap-0 items-center">
+            <div class="col-span-4 pr-4">
+                <p class="font-bold text-sm text-gray-900 uppercase truncate" title="${attempt.pdf_name}">${attempt.pdf_name}</p>
+                <p class="text-xs text-gray-400 font-mono mt-0.5">${attempt.duration} min</p>
+            </div>
+            <div class="col-span-2 text-center font-mono text-sm text-gray-700">${attempt.total_questions}</div>
+            <div class="col-span-2 text-center text-sm">${scoreCell}</div>
+            <div class="col-span-2 text-right text-xs text-gray-500 font-mono">${date}</div>
+            <div class="col-span-2 flex flex-col items-end gap-2 pl-2">
+                ${statusBadge}
+                <div class="flex items-center gap-2">
+                    ${action}
+                    ${deleteBtn}
+                </div>
+            </div>
+        </div>
+        <!-- Mobile stack -->
+        <div class="sm:hidden space-y-2">
+            <div class="flex items-start justify-between gap-2">
+                <p class="font-bold text-sm text-gray-900 uppercase leading-snug">${attempt.pdf_name}</p>
+                ${statusBadge}
+            </div>
+            <div class="flex flex-wrap gap-4 text-xs text-gray-500 font-mono">
+                <span>${attempt.total_questions} questions</span>
+                <span>${attempt.duration} min</span>
+                <span>${date}</span>
+                ${isCompleted && attempt.score !== null ? `<span class="text-green-700 font-bold">Score: ${attempt.score}</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2">${action}${deleteBtn}</div>
+        </div>
+    `;
+    return row;
+}
+
+/* ── Delete attempt ──────────────────────────────────────────────────── */
+async function deleteAttempt(attemptId, btnEl) {
+    if (!confirm('Are you sure you want to delete this test attempt? This cannot be undone.')) return;
+    try {
+        const res = await fetch('/api/attempt/' + attemptId, {
+            method: 'DELETE',
+            headers: authHeaders(),
+        });
+        if (res.status === 401) { window.location.href = '/login?next=/exams'; return; }
+        if (!res.ok) { alert('Failed to delete attempt.'); return; }
+
+        // Remove row from DOM
+        const row = btnEl.closest('.px-6');
+        if (row) row.remove();
+
+        // Refresh the whole list to update counts
+        hide('attempts-table');
+        show('loading-state');
+        loadAttempts();
+    } catch (_) {
+        alert('Network error while deleting.');
+    }
+}
+
+/* ── Fetch and render ───────────────────────────────────────────────────── */
+async function loadAttempts() {
+    try {
+        /* Reset UI state so re-calls (after delete) work cleanly */
+        hide('empty-state');
+        hide('error-state');
+        hide('attempts-table');
+
+        const res = await fetch('/api/attempts', { headers: authHeaders() });
+
+        if (res.status === 401) {
+            window.location.href = '/login?next=/exams';
+            return;
+        }
+        if (!res.ok) throw new Error('Non-OK response');
+
+        const attempts = await res.json();
+        hide('loading-state');
+
+        if (!Array.isArray(attempts) || attempts.length === 0) {
+            show('empty-state');
+            document.getElementById('count-ongoing').textContent   = '0';
+            document.getElementById('count-completed').textContent = '0';
+            return;
+        }
+
+        /* Sort newest first — use completed_at for finished tests, started_at otherwise */
+        attempts.sort((a, b) => {
+            const ta = new Date((a.completed_at || a.started_at) || 0).getTime();
+            const tb = new Date((b.completed_at || b.started_at) || 0).getTime();
+            return tb - ta;   /* descending: newest at top */
+        });
+
+        const ongoing   = attempts.filter(a => a.status === 'ongoing');
+        const completed = attempts.filter(a => a.status === 'completed');
+
+        document.getElementById('count-ongoing').textContent   = ongoing.length;
+        document.getElementById('count-completed').textContent = completed.length;
+
+        const rowsEl = document.getElementById('attempts-rows');
+        rowsEl.innerHTML = '';
+        attempts.forEach(a => rowsEl.appendChild(buildRow(a)));
+
+        show('attempts-table');
+
+    } catch (_) {
+        hide('loading-state');
+        show('error-state');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadAttempts);
+</script>
+</body>
+</html>

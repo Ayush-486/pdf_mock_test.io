@@ -27,11 +27,19 @@ import re
 import sqlite3
 import tempfile
 import uuid
+from datetime import datetime, timezone
+from typing import Optional
 
 import pdfplumber
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from auth import (
+    hash_password, verify_password, create_access_token,
+    get_current_user, get_optional_user,
+)
 
 # ──────────────────────────────────────────────
 # App setup
@@ -56,6 +64,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -78,7 +87,9 @@ def init_db():
                 option_d_image   TEXT,
                 has_diagram      INTEGER DEFAULT 0,
                 image_path       TEXT,
-                question_image   TEXT
+                question_image   TEXT,
+                correct_option   TEXT    NOT NULL DEFAULT 'a'
+                                         CHECK(correct_option IN ('a','b','c','d'))
             )
             """
         )
@@ -101,6 +112,412 @@ def insert_questions(questions: list[dict]):
             questions,
         )
         conn.commit()
+
+
+def init_auth_db():
+    """Create users, test_attempts, and user_answers tables if they do not exist.
+
+    On every startup the function also:
+      - Ensures user_answers.chosen_key has a CHECK(…IN('a','b','c','d')) constraint.
+        If the old table lacks the CHECK it is transparently migrated (data preserved).
+      - Creates performance indexes (idempotent: IF NOT EXISTS).
+    """
+    _USER_ANSWERS_DDL = """
+        CREATE TABLE user_answers (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            attempt_id  INTEGER NOT NULL REFERENCES test_attempts(id),
+            question_id INTEGER NOT NULL,
+            chosen_key  TEXT    NOT NULL CHECK(chosen_key IN ('a','b','c','d')),
+            answered_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(attempt_id, question_id)
+        )
+    """
+
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                email         TEXT    NOT NULL UNIQUE,
+                username      TEXT    NOT NULL,
+                password_hash TEXT    NOT NULL,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+
+        # ── Migrate: add is_admin column if missing (idempotent) ──────────────
+        try:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS test_attempts (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER NOT NULL REFERENCES users(id),
+                pdf_name        TEXT    NOT NULL,
+                total_questions INTEGER NOT NULL DEFAULT 0,
+                duration        INTEGER NOT NULL DEFAULT 60,
+                status          TEXT    NOT NULL DEFAULT 'ongoing',
+                score           REAL,
+                started_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+                completed_at    TEXT
+            )
+            """
+        )
+
+        # ── user_answers: create fresh or migrate to add CHECK constraint ──────
+        # Detect whether the CHECK exists by reading the stored DDL directly.
+        # The savepoint-probe technique is unreliable when PRAGMA foreign_keys=ON
+        # because a FK violation (attempt_id=0 → no parent row) fires before the
+        # CHECK and masks the absence of the constraint.
+        existing_ddl_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='user_answers'"
+        ).fetchone()
+
+        if not existing_ddl_row:
+            conn.execute(_USER_ANSWERS_DDL)
+        else:
+            existing_ddl = existing_ddl_row[0] or ""
+            if "CHECK" not in existing_ddl:
+                # Migrate: rename old table, create new one with CHECK, copy valid rows
+                conn.execute("ALTER TABLE user_answers RENAME TO user_answers_old")
+                conn.execute(_USER_ANSWERS_DDL)
+                conn.execute(
+                    """
+                    INSERT INTO user_answers
+                        (id, attempt_id, question_id, chosen_key, answered_at)
+                    SELECT id, attempt_id, question_id, chosen_key, answered_at
+                    FROM   user_answers_old
+                    WHERE  chosen_key IN ('a','b','c','d')
+                    """
+                )
+                conn.execute("DROP TABLE user_answers_old")
+
+        # ── Indexes (idempotent) ───────────────────────────────────────────────
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_attempt_user "
+            "ON test_attempts(user_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_answer_attempt "
+            "ON user_answers(attempt_id)"
+        )
+
+        # ── Scoring configuration table ────────────────────────────────────────
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scoring_config (
+                id            INTEGER PRIMARY KEY,
+                marks_correct INTEGER NOT NULL DEFAULT 4,
+                marks_wrong   INTEGER NOT NULL DEFAULT -1
+            )
+            """
+        )
+        # Ensure exactly one default row exists
+        conn.execute(
+            """
+            INSERT INTO scoring_config (id, marks_correct, marks_wrong)
+            SELECT 1, 4, -1
+            WHERE NOT EXISTS (SELECT 1 FROM scoring_config WHERE id = 1)
+            """
+        )
+
+        # ── Migrate: add summary columns to test_attempts (idempotent) ─────────
+        for _col, _default in [
+            ("correct",    "0"),
+            ("wrong",      "0"),
+            ("unanswered", "0"),
+            ("total_time", "0"),
+        ]:
+            try:
+                conn.execute(
+                    f"ALTER TABLE test_attempts ADD COLUMN {_col} INTEGER NOT NULL DEFAULT {_default}"
+                )
+            except sqlite3.OperationalError:
+                pass  # column already exists
+
+        # ── Per-question time spent ────────────────────────────────────────────
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS question_time_spent (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                attempt_id  INTEGER NOT NULL REFERENCES test_attempts(id),
+                question_id INTEGER NOT NULL,
+                seconds     INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(attempt_id, question_id)
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_qtime_attempt "
+            "ON question_time_spent(attempt_id)"
+        )
+
+        conn.commit()
+
+
+# ── User helpers ──────────────────────────────────────────────────────────────
+
+def db_create_user(email: str, username: str, password_hash: str) -> int:
+    with get_connection() as conn:
+        cur = conn.execute(
+            "INSERT INTO users (email, username, password_hash) VALUES (?,?,?)",
+            (email, username, password_hash),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def db_get_user_by_email(email: str) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, email, username, password_hash, is_admin FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def db_get_user_by_id(user_id: int) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, email, username, is_admin FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+# ── Attempt helpers ───────────────────────────────────────────────────────────
+
+def db_create_attempt(user_id: int, pdf_name: str, total_questions: int, duration: int) -> int:
+    with get_connection() as conn:
+        cur = conn.execute(
+            """INSERT INTO test_attempts (user_id, pdf_name, total_questions, duration)
+               VALUES (?,?,?,?)""",
+            (user_id, pdf_name, total_questions, duration),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def db_get_attempt(attempt_id: int) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM test_attempts WHERE id = ?", (attempt_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def db_get_user_attempts(user_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM test_attempts WHERE user_id = ? ORDER BY id DESC",
+            (user_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def db_upsert_answer(attempt_id: int, question_id: int, chosen_key: str):
+    with get_connection() as conn:
+        conn.execute(
+            """INSERT INTO user_answers (attempt_id, question_id, chosen_key)
+               VALUES (?,?,?)
+               ON CONFLICT(attempt_id, question_id) DO UPDATE SET
+                   chosen_key  = excluded.chosen_key,
+                   answered_at = datetime('now')""",
+            (attempt_id, question_id, chosen_key),
+        )
+        conn.commit()
+
+
+def db_get_attempt_answers(attempt_id: int) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT question_id, chosen_key FROM user_answers WHERE attempt_id = ?",
+            (attempt_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def db_complete_attempt(
+    attempt_id: int,
+    score: float,
+    correct: int,
+    wrong: int,
+    unanswered: int,
+    total_time: int,
+):
+    with get_connection() as conn:
+        conn.execute(
+            """UPDATE test_attempts
+               SET status       = 'completed',
+                   score        = ?,
+                   correct      = ?,
+                   wrong        = ?,
+                   unanswered   = ?,
+                   total_time   = ?,
+                   completed_at = datetime('now')
+               WHERE id = ?""",
+            (score, correct, wrong, unanswered, total_time, attempt_id),
+        )
+        conn.commit()
+
+
+def db_save_time_spent(attempt_id: int, time_spent: dict) -> None:
+    """Bulk-upsert per-question time (seconds) for an attempt."""
+    rows = []
+    for qid, secs in time_spent.items():
+        try:
+            rows.append((attempt_id, int(qid), max(0, int(secs))))
+        except (ValueError, TypeError):
+            pass  # skip any malformed entries
+    if not rows:
+        return
+    with get_connection() as conn:
+        conn.executemany(
+            """INSERT INTO question_time_spent (attempt_id, question_id, seconds)
+               VALUES (?,?,?)
+               ON CONFLICT(attempt_id, question_id) DO UPDATE SET
+                   seconds = excluded.seconds""",
+            rows,
+        )
+        conn.commit()
+
+
+def db_get_time_spent(attempt_id: int) -> dict:
+    """Return {str(question_id): seconds} for an attempt."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT question_id, seconds FROM question_time_spent WHERE attempt_id = ?",
+            (attempt_id,),
+        ).fetchall()
+    return {str(r["question_id"]): r["seconds"] for r in rows}
+
+
+def calculate_score(attempt_id: int) -> float:
+    """Compute score server-side from stored answers vs correct_option.
+
+    Marks per outcome are read from the scoring_config table so admins can
+    tune them at runtime without a code deployment.
+
+    Scoring:
+        marks_correct   correct answer  (default +4)
+        marks_wrong     wrong answer    (default -1)
+         0              unattempted     (not in user_answers at all)
+
+    Returns the raw float score (can be negative).
+    """
+    config = db_get_scoring_config()
+    marks_correct = float(config["marks_correct"])
+    marks_wrong   = float(config["marks_wrong"])
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT ua.chosen_key, q.correct_option
+            FROM   user_answers ua
+            JOIN   questions    q  ON q.id = ua.question_id
+            WHERE  ua.attempt_id = ?
+            """,
+            (attempt_id,),
+        ).fetchall()
+    score = 0.0
+    for row in rows:
+        if row["chosen_key"] == row["correct_option"]:
+            score += marks_correct
+        else:
+            score += marks_wrong
+    return score
+
+
+def calculate_score_detailed(attempt_id: int) -> dict:
+    """Server-side scoring with full breakdown.
+
+    Reads answers from user_answers, compares against questions.correct_option.
+    Scoring rules (from scoring_config):
+        +marks_correct  for a correct answer
+        +marks_wrong    for a wrong  answer  (typically negative)
+         0              for an unanswered question
+    Score is floored at 0 — cannot go below zero.
+
+    Returns:
+        {
+            "score":      float,   # floored at 0
+            "correct":    int,
+            "wrong":      int,
+            "unanswered": int,
+        }
+    """
+    config        = db_get_scoring_config()
+    marks_correct = float(config["marks_correct"])
+    marks_wrong   = float(config["marks_wrong"])
+
+    with get_connection() as conn:
+        total_questions = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+        rows = conn.execute(
+            """
+            SELECT ua.chosen_key, q.correct_option
+            FROM   user_answers ua
+            JOIN   questions    q  ON q.id = ua.question_id
+            WHERE  ua.attempt_id = ?
+            """,
+            (attempt_id,),
+        ).fetchall()
+
+    correct   = sum(1 for r in rows if r["chosen_key"] == r["correct_option"])
+    wrong     = sum(1 for r in rows if r["chosen_key"] != r["correct_option"])
+    unanswered = total_questions - len(rows)
+
+    raw_score = correct * marks_correct + wrong * marks_wrong
+    score     = max(0.0, raw_score)          # floor at zero
+
+    return {
+        "score":      score,
+        "correct":    correct,
+        "wrong":      wrong,
+        "unanswered": unanswered,
+    }
+
+
+# ── Scoring config helpers ────────────────────────────────────────────────────
+
+def db_get_scoring_config() -> dict:
+    """Return the single scoring_config row, falling back to defaults."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT marks_correct, marks_wrong FROM scoring_config WHERE id = 1"
+        ).fetchone()
+    return dict(row) if row else {"marks_correct": 4, "marks_wrong": -1}
+
+
+def db_update_scoring_config(marks_correct: int, marks_wrong: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE scoring_config SET marks_correct = ?, marks_wrong = ? WHERE id = 1",
+            (marks_correct, marks_wrong),
+        )
+        conn.commit()
+
+
+def db_set_question_answer(question_id: int, correct_option: str) -> bool:
+    """Set correct_option for a question. Returns True if the row existed."""
+    with get_connection() as conn:
+        updated = conn.execute(
+            "UPDATE questions SET correct_option = ? WHERE id = ?",
+            (correct_option, question_id),
+        ).rowcount
+        conn.commit()
+    return updated > 0
+
+
+# ── Startup ───────────────────────────────────────────────────────────────────
+
+@app.on_event("startup")
+def on_startup():
+    init_auth_db()
 
 
 # ──────────────────────────────────────────────
@@ -1167,12 +1584,73 @@ def parse_with_diagram_info(pdf_path: str) -> list[dict]:
 
 
 # ──────────────────────────────────────────────
+# Pydantic request models
+# ──────────────────────────────────────────────
+
+class SignupRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class StartAttemptRequest(BaseModel):
+    pdf_name: str
+    total_questions: int
+    duration: int = 60
+
+
+class SaveAnswerRequest(BaseModel):
+    question_id: int
+    chosen_key: str
+
+
+class SetAnswerRequest(BaseModel):
+    correct_option: str
+
+
+class ScoringConfigRequest(BaseModel):
+    marks_correct: int
+    marks_wrong: int
+
+
+class SubmitAttemptRequest(BaseModel):
+    """Payload sent by the frontend when the user submits a test.
+
+    answers    – final answer state: {str(question_id): 'a'|'b'|'c'|'d'}
+    time_spent – seconds spent per question: {str(question_id): int}
+
+    The server ignores any client-side score and recalculates from scratch.
+    """
+    answers:    dict = {}   # {str(qid): key}
+    time_spent: dict = {}   # {str(qid): seconds}
+
+
+# ──────────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────────
+
+# ── Static HTML pages ─────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     with open(os.path.join(STATIC_DIR, "index.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def serve_login():
+    with open(os.path.join(STATIC_DIR, "login.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/signup", response_class=HTMLResponse)
+async def serve_signup():
+    with open(os.path.join(STATIC_DIR, "signup.html"), encoding="utf-8") as f:
         return f.read()
 
 
@@ -1181,6 +1659,322 @@ async def serve_test():
     with open(os.path.join(STATIC_DIR, "test.html"), encoding="utf-8") as f:
         return f.read()
 
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def serve_dashboard():
+    with open(os.path.join(STATIC_DIR, "dashboard.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/result", response_class=HTMLResponse)
+async def serve_result():
+    with open(os.path.join(STATIC_DIR, "result.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/exams", response_class=HTMLResponse)
+async def serve_exams():
+    with open(os.path.join(STATIC_DIR, "exams.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/reports", response_class=HTMLResponse)
+async def serve_reports():
+    with open(os.path.join(STATIC_DIR, "reports.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def serve_settings():
+    with open(os.path.join(STATIC_DIR, "settings.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def serve_privacy():
+    with open(os.path.join(STATIC_DIR, "privacy.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/support", response_class=HTMLResponse)
+async def serve_support():
+    with open(os.path.join(STATIC_DIR, "support.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def serve_terms():
+    with open(os.path.join(STATIC_DIR, "terms.html"), encoding="utf-8") as f:
+        return f.read()
+
+
+# ── Auth API ──────────────────────────────────
+
+@app.post("/api/auth/signup")
+async def api_signup(body: SignupRequest):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    if db_get_user_by_email(body.email):
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    hashed = hash_password(body.password)
+    user_id = db_create_user(body.email.lower().strip(), body.username.strip(), hashed)
+    token = create_access_token(user_id, body.email.lower().strip())
+    return {"token": token, "user_id": user_id, "username": body.username}
+
+
+@app.post("/api/auth/login")
+async def api_login(body: LoginRequest):
+    user = db_get_user_by_email(body.email.lower().strip())
+    if not user or not verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    token = create_access_token(user["id"], user["email"])
+    return {"token": token, "user_id": user["id"], "username": user["username"]}
+
+
+@app.get("/api/auth/me")
+async def api_me(current_user: dict = Depends(get_current_user)):
+    user = db_get_user_by_id(current_user["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return user
+
+
+# ── Test attempt API ──────────────────────────
+
+@app.post("/api/attempt/start")
+async def api_start_attempt(
+    body: StartAttemptRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    # Reuse an existing ongoing attempt for the same user + pdf to prevent
+    # duplicates when the /test page is refreshed or revisited.
+    with get_connection() as conn:
+        existing = conn.execute(
+            """SELECT id FROM test_attempts
+               WHERE user_id = ? AND pdf_name = ? AND status = 'ongoing'
+               ORDER BY id DESC LIMIT 1""",
+            (current_user["user_id"], body.pdf_name),
+        ).fetchone()
+    if existing:
+        return {"attempt_id": existing["id"]}
+
+    attempt_id = db_create_attempt(
+        user_id=current_user["user_id"],
+        pdf_name=body.pdf_name,
+        total_questions=body.total_questions,
+        duration=body.duration,
+    )
+    return {"attempt_id": attempt_id}
+
+
+@app.post("/api/attempt/{attempt_id}/answer")
+async def api_save_answer(
+    attempt_id: int,
+    body: SaveAnswerRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    attempt = db_get_attempt(attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found.")
+    if attempt["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+    if attempt["status"] != "ongoing":
+        raise HTTPException(status_code=400, detail="Attempt is already completed.")
+    if body.chosen_key not in ("a", "b", "c", "d"):
+        raise HTTPException(status_code=400, detail="chosen_key must be a, b, c, or d.")
+    db_upsert_answer(attempt_id, body.question_id, body.chosen_key)
+    return {"ok": True}
+
+
+@app.post("/api/attempt/{attempt_id}/submit")
+async def api_submit_attempt(
+    attempt_id: int,
+    body: SubmitAttemptRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Submit a test attempt and return a structured scoring summary.
+
+    Flow:
+      1. Validate ownership and that attempt is still ongoing.
+      2. Bulk-upsert all answers supplied by the frontend (overwrites interim saves).
+      3. Calculate score server-side — client-supplied score is never trusted.
+      4. Save per-question time spent.
+      5. Lock the attempt (status → 'completed').
+      6. Return structured JSON: score / correct / wrong / unanswered / times.
+
+    If the attempt is already completed, return the stored summary immediately
+    without recalculating.
+    """
+    attempt = db_get_attempt(attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found.")
+    if attempt["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+
+    if attempt["status"] == "completed":
+        # Return previously calculated and locked results.
+        return {
+            "score":             attempt["score"],
+            "correct":           attempt.get("correct",    0),
+            "wrong":             attempt.get("wrong",      0),
+            "unanswered":        attempt.get("unanswered", 0),
+            "total_time":        attempt.get("total_time", 0),
+            "per_question_time": db_get_time_spent(attempt_id),
+        }
+
+    # ── 1. Persist final answer state ────────────────────────────────────────
+    # Overwrite any interim answers with the definitive frontend state.
+    valid_keys = {"a", "b", "c", "d"}
+    for qid_str, key in body.answers.items():
+        if key not in valid_keys:
+            continue
+        try:
+            db_upsert_answer(attempt_id, int(qid_str), key)
+        except (ValueError, Exception):
+            pass  # skip malformed question_ids
+
+    # ── 2. Score server-side (never trust client score) ──────────────────────
+    result = calculate_score_detailed(attempt_id)
+
+    # ── 3. Time accounting ───────────────────────────────────────────────────
+    total_time = int(sum(
+        v for v in body.time_spent.values()
+        if isinstance(v, (int, float)) and v >= 0
+    ))
+    if body.time_spent:
+        db_save_time_spent(attempt_id, body.time_spent)
+
+    # ── 4. Lock attempt with full summary ────────────────────────────────────
+    db_complete_attempt(
+        attempt_id,
+        score      = result["score"],
+        correct    = result["correct"],
+        wrong      = result["wrong"],
+        unanswered = result["unanswered"],
+        total_time = total_time,
+    )
+
+    return {
+        "score":             result["score"],
+        "correct":           result["correct"],
+        "wrong":             result["wrong"],
+        "unanswered":        result["unanswered"],
+        "total_time":        total_time,
+        "per_question_time": db_get_time_spent(attempt_id),
+    }
+
+
+@app.get("/api/attempt/{attempt_id}")
+async def api_get_attempt(
+    attempt_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    attempt = db_get_attempt(attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found.")
+    if attempt["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+
+    time_spent = db_get_time_spent(attempt_id)
+
+    with get_connection() as conn:
+        # User answers with correct options for each answered question
+        answer_rows = conn.execute(
+            """SELECT ua.question_id, ua.chosen_key, q.correct_option
+               FROM   user_answers ua
+               JOIN   questions    q  ON q.id = ua.question_id
+               WHERE  ua.attempt_id = ?""",
+            (attempt_id,),
+        ).fetchall()
+
+        # All questions in display order (id == display order after init_db)
+        question_rows = conn.execute(
+            "SELECT id, correct_option FROM questions ORDER BY id"
+        ).fetchall()
+
+    # Build O(1) lookup: question_id → answered row
+    answer_map = {r["question_id"]: r for r in answer_rows}
+
+    # One breakdown entry per question
+    breakdown = []
+    for num, q in enumerate(question_rows, start=1):
+        qid    = q["id"]
+        ans    = answer_map.get(qid)
+        chosen  = ans["chosen_key"]    if ans else None
+        correct = q["correct_option"]
+
+        if chosen is None:
+            status = "unanswered"
+        elif chosen == correct:
+            status = "correct"
+        else:
+            status = "wrong"
+
+        breakdown.append({
+            "question_num":   num,
+            "question_id":    qid,
+            "chosen_key":     chosen,
+            "correct_option": correct,
+            "time_seconds":   time_spent.get(str(qid), 0),
+            "status":         status,
+        })
+
+    return {
+        **dict(attempt),
+        "per_question_time": time_spent,
+        "breakdown":         breakdown,
+    }
+
+
+@app.delete("/api/attempt/{attempt_id}")
+async def api_delete_attempt(
+    attempt_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete a test attempt and all associated answer/time data."""
+    attempt = db_get_attempt(attempt_id)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found.")
+    if attempt["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+    with get_connection() as conn:
+        conn.execute("DELETE FROM question_time_spent WHERE attempt_id = ?", (attempt_id,))
+        conn.execute("DELETE FROM user_answers WHERE attempt_id = ?", (attempt_id,))
+        conn.execute("DELETE FROM test_attempts WHERE id = ?", (attempt_id,))
+        conn.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/attempts/all")
+async def api_delete_all_attempts(
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete ALL test attempts for the current user."""
+    with get_connection() as conn:
+        attempt_ids = [
+            r["id"] for r in conn.execute(
+                "SELECT id FROM test_attempts WHERE user_id = ?",
+                (current_user["user_id"],),
+            ).fetchall()
+        ]
+        for aid in attempt_ids:
+            conn.execute("DELETE FROM question_time_spent WHERE attempt_id = ?", (aid,))
+            conn.execute("DELETE FROM user_answers WHERE attempt_id = ?", (aid,))
+        conn.execute(
+            "DELETE FROM test_attempts WHERE user_id = ?",
+            (current_user["user_id"],),
+        )
+        conn.commit()
+    return {"ok": True, "deleted": len(attempt_ids)}
+
+
+@app.get("/api/attempts")
+async def api_get_attempts(current_user: dict = Depends(get_current_user)):
+    attempts = db_get_user_attempts(current_user["user_id"])
+    return attempts
+
+
+# ── PDF upload ────────────────────────────────
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -1224,6 +2018,51 @@ async def get_all_questions():
             "has_diagram, image_path, question_image FROM questions ORDER BY id"
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+# ──────────────────────────────────────────────
+# Admin helpers and routes
+# ──────────────────────────────────────────────
+
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """FastAPI dependency: raises HTTP 403 unless the user has is_admin = 1."""
+    user = db_get_user_by_id(current_user["user_id"])
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    return user
+
+
+@app.post("/api/admin/question/{question_id}/answer")
+async def api_set_question_answer(
+    question_id: int,
+    body: SetAnswerRequest,
+    admin: dict = Depends(require_admin),
+):
+    """Admin only: set the correct answer for a question."""
+    if body.correct_option not in ("a", "b", "c", "d"):
+        raise HTTPException(
+            status_code=400, detail="correct_option must be one of: a, b, c, d."
+        )
+    found = db_set_question_answer(question_id, body.correct_option)
+    if not found:
+        raise HTTPException(status_code=404, detail="Question not found.")
+    return {"ok": True, "question_id": question_id, "correct_option": body.correct_option}
+
+
+@app.get("/api/admin/config")
+async def api_get_scoring_config(admin: dict = Depends(require_admin)):
+    """Admin only: retrieve current scoring configuration."""
+    return db_get_scoring_config()
+
+
+@app.post("/api/admin/config")
+async def api_update_scoring_config(
+    body: ScoringConfigRequest,
+    admin: dict = Depends(require_admin),
+):
+    """Admin only: update marks_correct and marks_wrong."""
+    db_update_scoring_config(body.marks_correct, body.marks_wrong)
+    return {"ok": True, **db_get_scoring_config()}
 
 
 # ──────────────────────────────────────────────

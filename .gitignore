@@ -8,3 +8,4 @@ questions.db
 static/images/*
 tmp*
 tmpclaude*
+.jwt_secret

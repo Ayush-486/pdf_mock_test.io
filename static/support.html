@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - Support and Help Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: { chrome:"#F3F4F6", header:"#1F2937", border:"#374151", primary:"#22C55E", "primary-hover":"#16A34A", surface:"#ffffff" },
+                    fontFamily: { sans: ["Arial","Helvetica","sans-serif"] },
+                    borderRadius: { DEFAULT:"0px", none:"0px", sm:"0px", md:"0px", lg:"0px", xl:"0px", full:"0px" },
+                    boxShadow: { 'brutalist':'4px 4px 0 0 #374151', 'brutalist-sm':'2px 2px 0 0 #374151' }
+                }
+            }
+        };
+    </script>
+<style>body { font-family: Arial, Helvetica, sans-serif; }</style>
+</head>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col antialiased">
+<header class="bg-header border-b border-border shadow-none sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center">
+<div class="flex-shrink-0 flex items-center gap-3">
+<a href="/"><div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div></a>
+<a href="/"><span class="font-bold text-xl text-white tracking-tight">TestArena</span></a>
+</div>
+<nav class="hidden md:ml-12 md:flex space-x-8">
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/">Dashboard</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/exams">My Exams</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/reports">Reports</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/settings">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 border-l border-gray-600 pl-4">
+<span class="material-symbols-outlined text-gray-300 text-xl">account_circle</span>
+<span id="header-username" class="text-sm font-bold text-white hidden sm:block">—</span>
+</div>
+<button id="logout-btn" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-wide border border-gray-600 px-3 py-1 hover:border-gray-400 transition-colors">Logout</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<div class="mb-8 border-l-4 border-header pl-4">
+<h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-2">Support &amp; Help Center</h1>
+<p class="text-lg text-gray-600 max-w-3xl">Need assistance? Browse our FAQs or contact our dedicated support team directly.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 space-y-6">
+<div class="bg-white border border-border shadow-brutalist overflow-hidden">
+<div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center justify-between">
+<h2 class="text-lg font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide"><span class="material-symbols-outlined text-header">quiz</span>Frequently Asked Questions</h2>
+</div>
+<div class="p-6 space-y-6">
+<div class="border border-border p-4 bg-gray-50">
+<h3 class="text-sm font-black text-gray-900 uppercase flex items-center gap-2 mb-2"><span class="bg-header text-white w-6 h-6 flex items-center justify-center text-xs">Q</span>How do I upload a PDF question bank?</h3>
+<p class="text-sm text-gray-600 pl-8 font-mono leading-relaxed">Navigate to the Dashboard and click on "PDF to Mock Test". Upload your file (max 10MB) and ensure it follows the numbered format (1., 2., etc.). The system will auto-extract questions.</p>
+</div>
+<div class="border border-border p-4 bg-gray-50">
+<h3 class="text-sm font-black text-gray-900 uppercase flex items-center gap-2 mb-2"><span class="bg-header text-white w-6 h-6 flex items-center justify-center text-xs">Q</span>Can I customize the test duration?</h3>
+<p class="text-sm text-gray-600 pl-8 font-mono leading-relaxed">Yes. In the test configuration step, you can manually input the duration in minutes. The default is set to 60 minutes for standard exams.</p>
+</div>
+<div class="border border-border p-4 bg-gray-50">
+<h3 class="text-sm font-black text-gray-900 uppercase flex items-center gap-2 mb-2"><span class="bg-header text-white w-6 h-6 flex items-center justify-center text-xs">Q</span>What happens if my internet disconnects during a test?</h3>
+<p class="text-sm text-gray-600 pl-8 font-mono leading-relaxed">TestArena saves progress locally every 30 seconds. Once your connection is restored, the data will sync automatically. Do not close the browser tab.</p>
+</div>
+<div class="border border-border p-4 bg-gray-50">
+<h3 class="text-sm font-black text-gray-900 uppercase flex items-center gap-2 mb-2"><span class="bg-header text-white w-6 h-6 flex items-center justify-center text-xs">Q</span>How is negative marking calculated?</h3>
+<p class="text-sm text-gray-600 pl-8 font-mono leading-relaxed">If enabled, 0.25 marks are deducted for every incorrect answer. Unattempted questions do not attract any penalty.</p>
+</div>
+</div>
+</div>
+<div class="bg-header text-white p-6 border border-border shadow-brutalist flex flex-col sm:flex-row justify-between items-center gap-4">
+<div>
+<h3 class="text-lg font-bold uppercase tracking-wide">Still stuck?</h3>
+<p class="text-sm text-gray-300 font-mono mt-1">Our documentation has more detailed guides.</p>
+</div>
+<button class="px-6 py-3 border border-white bg-transparent text-white text-sm font-bold uppercase tracking-wider hover:bg-white hover:text-header transition-colors active:translate-y-0.5">View Documentation</button>
+</div>
+</div>
+<div class="space-y-6">
+<div class="bg-white border border-border shadow-brutalist overflow-hidden">
+<div class="bg-gray-100 px-6 py-4 border-b border-border">
+<h2 class="text-lg font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide"><span class="material-symbols-outlined text-header">mail</span>Contact Support</h2>
+</div>
+<form class="p-6 space-y-4">
+<div>
+<label class="block text-xs font-bold text-gray-900 mb-1 uppercase tracking-wide" for="name">Full Name</label>
+<input class="block w-full text-sm border-border bg-gray-50 rounded-none focus:ring-0 focus:border-header focus:shadow-[2px_2px_0_0_#1F2937] transition-shadow py-2 px-3" id="name" name="name" placeholder="AYUSH" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-gray-900 mb-1 uppercase tracking-wide" for="email">Email Address</label>
+<input class="block w-full text-sm border-border bg-gray-50 rounded-none focus:ring-0 focus:border-header focus:shadow-[2px_2px_0_0_#1F2937] transition-shadow py-2 px-3" id="email" name="email" placeholder="name@company.com" type="email"/>
+</div>
+<div>
+<label class="block text-xs font-bold text-gray-900 mb-1 uppercase tracking-wide" for="message">Message</label>
+<textarea class="block w-full text-sm border-border bg-gray-50 rounded-none focus:ring-0 focus:border-header focus:shadow-[2px_2px_0_0_#1F2937] transition-shadow py-2 px-3" id="message" name="message" placeholder="Describe your issue..." rows="4"></textarea>
+</div>
+<button class="w-full mt-2 inline-flex justify-center items-center px-6 py-3 border border-border text-sm font-bold text-white bg-primary hover:bg-primary-hover uppercase tracking-wider transition-all active:translate-x-0.5 active:translate-y-0.5 shadow-[2px_2px_0_0_#374151] active:shadow-none" type="submit">Send Message</button>
+</form>
+</div>
+<div class="bg-white border border-border shadow-brutalist-sm p-6">
+<h3 class="text-sm font-black text-gray-900 uppercase mb-4 border-b border-border pb-2">Direct Contact</h3>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<div class="bg-gray-100 p-2 border border-border flex-shrink-0"><span class="material-symbols-outlined text-header text-xl">call</span></div>
+<div><p class="text-xs font-bold uppercase text-gray-500">Phone Support</p><p class="text-sm font-bold text-gray-900 font-mono">+1 (555) 123-4567</p><p class="text-xs text-gray-500 mt-1">Mon-Fri, 9am - 6pm EST</p></div>
+</li>
+<li class="flex items-start gap-3">
+<div class="bg-gray-100 p-2 border border-border flex-shrink-0"><span class="material-symbols-outlined text-header text-xl">alternate_email</span></div>
+<div><p class="text-xs font-bold uppercase text-gray-500">Email</p>neksonijee@gmail.com<br/><p class="text-xs text-gray-500 mt-1">24/7 Response Time</p></div>
+</li>
+<li class="flex items-start gap-3">
+<div class="bg-gray-100 p-2 border border-border flex-shrink-0"><span class="material-symbols-outlined text-header text-xl">location_on</span></div>
+<div><p class="text-xs font-bold uppercase text-gray-500">Headquarters</p><p class="text-sm font-bold text-gray-900 font-mono">101 Tech Plaza, Suite 400<br/>San Francisco, CA 94107</p></div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-white border-t border-border py-8 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-sm text-gray-500 font-mono">© 2023 TestArena Systems.</p>
+<div class="flex space-x-6 text-sm font-bold text-gray-600 uppercase tracking-wide">
+<a class="hover:text-header hover:underline decoration-2" href="/privacy">Privacy Policy</a>
+<a class="hover:text-header hover:underline decoration-2" href="/terms">Terms</a>
+<a class="text-header underline decoration-2 decoration-primary underline-offset-4" href="/support">Support</a>
+</div>
+</div>
+</footer>
+<script>
+document.getElementById('header-username').textContent = localStorage.getItem('ta_username') || '—';
+document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('ta_token');
+    localStorage.removeItem('ta_user_id');
+    localStorage.removeItem('ta_username');
+    window.location.href = '/login';
+});
+</script>
+</body></html>

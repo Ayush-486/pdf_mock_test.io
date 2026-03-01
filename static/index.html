@@ -1,73 +1,429 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF to Mock Test – Upload</title>
-    <link rel="stylesheet" href="/static/style.css" />
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - PDF to Mock Test</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        chrome: "#F3F4F6",
+                        header: "#1F2937",
+                        border: "#374151",
+                        primary: "#22C55E",
+                        "primary-hover": "#16A34A",
+                        surface: "#ffffff",
+                    },
+                    fontFamily: {
+                        sans: ["Arial", "Helvetica", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0px",
+                        none: "0px",
+                        sm: "0px",
+                        md: "0px",
+                        lg: "0px",
+                        xl: "0px",
+                        full: "0px",
+                    },
+                    boxShadow: {
+                        'brutalist': '4px 4px 0 0 #374151',
+                        'brutalist-sm': '2px 2px 0 0 #374151',
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+    </style>
 </head>
-<body>
-<div class="container">
-    <h1>PDF to Mock Test</h1>
-    <p>Upload a PDF that contains multiple-choice questions (MCQs). The system will extract the questions and start an online test.</p>
-
-    <form id="upload-form">
-        <label for="pdf-file">Select PDF file:</label>
-        <input type="file" id="pdf-file" accept=".pdf" required />
-        <button type="submit" id="upload-btn">Upload &amp; Process</button>
-    </form>
-
-    <p id="status-msg"></p>
-    <p id="error-msg"></p>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col antialiased">
+<header class="bg-header border-b border-border shadow-none sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center">
+<div class="flex-shrink-0 flex items-center gap-3">
+<div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div>
+<span class="font-bold text-xl text-white tracking-tight">TestArena</span>
+</div>
+<nav class="hidden md:ml-12 md:flex space-x-8">
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-bold text-white" href="/">Dashboard</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/exams">My Exams</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/reports">Reports</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/settings">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 border-l border-gray-600 pl-4">
+<span class="material-symbols-outlined text-gray-300 text-xl">account_circle</span>
+<span id="header-username" class="text-sm font-bold text-white hidden sm:block">—</span>
+</div>
+<button id="logout-btn" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-wide border border-gray-600 px-3 py-1 hover:border-gray-400 transition-colors">Logout</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+<div class="max-w-4xl mx-auto">
+<div class="mb-8 border-l-4 border-header pl-4">
+<h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-2">PDF to Mock Test Generator</h1>
+<p class="text-lg text-gray-600 max-w-3xl">
+                Upload your question bank PDF. System will extract MCQs and configure a timed test session.
+            </p>
+</div>
+<div class="bg-white border border-border shadow-brutalist overflow-hidden">
+<div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center">
+<h2 class="text-lg font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+<span class="material-symbols-outlined text-header">upload_file</span>
+                    Upload &amp; Configuration
+                </h2>
+</div>
+<form id="upload-form" class="p-6 md:p-8 space-y-8">
+<div class="space-y-4">
+<label class="block text-sm font-bold text-gray-900 mb-1 uppercase tracking-wide">
+                        Upload Question Paper (PDF)
+                    </label>
+<div id="drop-zone" class="mt-1 flex justify-center px-6 pt-10 pb-10 border-2 border-dashed border-border bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group relative">
+<input accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" id="file-upload" name="file" type="file"/>
+<div class="space-y-2 text-center" id="drop-zone-content">
+<span class="material-symbols-outlined text-5xl text-gray-400 group-hover:text-header transition-colors">cloud_upload</span>
+<div class="flex flex-col text-sm text-gray-600 justify-center">
+<span class="font-bold text-header underline decoration-2 decoration-primary underline-offset-2">Click to upload</span>
+<span class="mt-1">or drag and drop here</span>
+</div>
+<p class="text-xs font-mono text-gray-500 bg-white border border-border inline-block px-2 py-1 mt-2">
+                                MAX 10MB .PDF
+                            </p>
+</div>
+</div>
+</div>
+<div class="relative py-4">
+<div aria-hidden="true" class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-border"></div>
+</div>
+<div class="relative flex justify-center">
+<span class="px-4 bg-white text-sm text-gray-900 font-bold border border-border uppercase tracking-wider">Test Parameters</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-sm font-bold text-gray-900 mb-1 uppercase tracking-wide" for="duration">
+                            Test Duration (Minutes)
+                        </label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none border-r border-border bg-gray-100 w-10 justify-center">
+<span class="material-symbols-outlined text-gray-600 text-lg">timer</span>
+</div>
+<input class="block w-full pl-12 sm:text-sm border-border rounded-none focus:ring-0 focus:border-header focus:shadow-[4px_4px_0_0_#1F2937] transition-shadow py-3" id="duration" name="duration" placeholder="e.g. 60" type="number" value="60" min="1" max="300"/>
+</div>
+<p class="mt-2 text-xs font-mono text-gray-500">* Standard duration is 60 minutes. (1–300)</p>
+</div>
+<div>
+<label class="block text-sm font-bold text-gray-900 mb-1 uppercase tracking-wide" for="question-count">
+                            Questions to Extract
+                        </label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none border-r border-border bg-gray-100 w-10 justify-center">
+<span class="material-symbols-outlined text-gray-600 text-lg">format_list_numbered</span>
+</div>
+<select class="block w-full pl-12 sm:text-sm border-border rounded-none focus:ring-0 focus:border-header focus:shadow-[4px_4px_0_0_#1F2937] transition-shadow py-3" id="question-count" name="question-count">
+<option value="auto">Auto-detect all</option>
+<option value="10">10 Questions</option>
+<option value="20">20 Questions</option>
+<option value="50">50 Questions</option>
+<option value="100">100 Questions</option>
+<option value="custom">Custom...</option>
+</select>
+</div>
+<p class="mt-2 text-xs font-mono text-gray-500">* Select 'Auto-detect' for all MCQs.</p>
+</div>
+<!-- Custom question count input (hidden by default) -->
+<div id="custom-count-wrap" class="md:col-span-2 hidden">
+<label class="block text-sm font-bold text-gray-900 mb-1 uppercase tracking-wide" for="custom-count">Custom Question Count</label>
+<input class="block w-full sm:text-sm border-border rounded-none focus:ring-0 focus:border-header focus:shadow-[4px_4px_0_0_#1F2937] transition-shadow py-3 px-3" id="custom-count" type="number" min="1" max="500" placeholder="Enter number (1–500)"/>
+<p class="mt-2 text-xs font-mono text-gray-500">* Enter a value between 1 and 500.</p>
+</div>
+<div class="md:col-span-2 bg-gray-50 p-4 border border-border">
+<div class="flex items-start">
+<div class="flex items-center h-5">
+<input class="h-5 w-5 text-header border-border rounded-none focus:ring-0 focus:ring-offset-0" id="negative-marking" name="negative-marking" type="checkbox"/>
+</div>
+<div class="ml-3 text-sm">
+<label class="font-bold text-gray-900 uppercase" for="negative-marking">Enable Negative Marking</label>
+<p class="text-gray-600 mt-1 font-mono text-xs">Deduct 0.25 marks for every incorrect answer.</p>
+</div>
+</div>
+</div>
 </div>
 
+<!-- Status / error feedback -->
+<div id="status-bar" class="hidden px-4 py-3 border border-border font-mono text-sm"></div>
+
+<div class="pt-6 flex items-center justify-end gap-4 border-t border-border">
+<button class="px-6 py-3 border border-border bg-white text-gray-900 text-sm font-bold uppercase tracking-wider hover:bg-gray-50 hover:shadow-brutalist-sm transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" type="button">
+                        Cancel
+                    </button>
+<button id="submit-btn" class="inline-flex items-center px-6 py-3 border border-border text-sm font-bold text-white bg-primary hover:bg-primary-hover shadow-brutalist uppercase tracking-wider transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none" type="submit">
+<span class="material-symbols-outlined text-lg mr-2" id="submit-icon">settings_suggest</span>
+<span id="submit-label">Process &amp; Start Test</span>
+</button>
+</div>
+</form>
+</div>
+<div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white p-4 border border-border shadow-brutalist-sm flex items-start gap-3">
+<span class="material-symbols-outlined text-header text-2xl mt-0.5">info</span>
+<div>
+<h3 class="text-sm font-black text-gray-900 uppercase">Format Guide</h3>
+<p class="text-xs text-gray-600 mt-1 font-mono">Numbered questions (1., 2.) &amp; options (a., b.) required.</p>
+</div>
+</div>
+<div class="bg-white p-4 border border-border shadow-brutalist-sm flex items-start gap-3">
+<span class="material-symbols-outlined text-header text-2xl mt-0.5">history</span>
+<div>
+<h3 class="text-sm font-black text-gray-900 uppercase">Recent Uploads</h3>
+<p class="text-xs text-gray-600 mt-1 font-mono">Check "My Exams" tab for history.</p>
+</div>
+</div>
+<div class="bg-white p-4 border border-border shadow-brutalist-sm flex items-start gap-3">
+<span class="material-symbols-outlined text-header text-2xl mt-0.5">security</span>
+<div>
+<h3 class="text-sm font-black text-gray-900 uppercase">Data Privacy</h3>
+<p class="text-xs text-gray-600 mt-1 font-mono">Files deleted immediately after processing.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-white border-t border-border py-8 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-sm text-gray-500 font-mono">
+            © 2023 TestArena Systems.
+        </p>
+<div class="flex space-x-6 text-sm font-bold text-gray-600 uppercase tracking-wide">
+<a class="hover:text-header hover:underline decoration-2" href="/privacy">Privacy Policy</a>
+<a class="hover:text-header hover:underline decoration-2" href="/terms">Terms</a>
+<a class="hover:text-header hover:underline decoration-2" href="/support">Support</a>
+</div>
+</div>
+</footer>
 <script>
-    const form = document.getElementById('upload-form');
-    const fileInput = document.getElementById('pdf-file');
-    const uploadBtn = document.getElementById('upload-btn');
-    const statusMsg = document.getElementById('status-msg');
-    const errorMsg  = document.getElementById('error-msg');
+    // ── Auth guard ────────────────────────────────────────────────────────────
+    const _ta_token = localStorage.getItem('ta_token');
+    if (!_ta_token) { window.location.href = '/login?next=/'; }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('header-username').textContent =
+            localStorage.getItem('ta_username') || 'User';
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('ta_token');
+            localStorage.removeItem('ta_user_id');
+            localStorage.removeItem('ta_username');
+            window.location.href = '/login';
+        });
+    });
+</script>
+<script>
+    // ── Drop zone & file input refs ──────────────────────────────────────────
+    const dropZone   = document.getElementById('drop-zone');
+    const fileInput  = document.getElementById('file-upload');
+    const dzContent  = document.getElementById('drop-zone-content');
+
+    // ── Drag-and-drop visual feedback ────────────────────────────────────────
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
+        dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false)
+    );
+    ['dragenter', 'dragover'].forEach(evt =>
+        dropZone.addEventListener(evt, () => {
+            dropZone.classList.add('bg-green-50', 'border-primary');
+            dropZone.classList.remove('border-border', 'bg-gray-50');
+        }, false)
+    );
+    ['dragleave'].forEach(evt =>
+        dropZone.addEventListener(evt, () => {
+            if (!fileInput.files || fileInput.files.length === 0) {
+                dropZone.classList.remove('bg-green-50', 'border-primary');
+                dropZone.classList.add('border-border', 'bg-gray-50');
+            }
+        }, false)
+    );
+
+    const MAX_SIZE_MB = 10;
+
+    function showFileSelected(name) {
+        dzContent.innerHTML = `
+            <span class="material-symbols-outlined text-4xl text-primary">check_circle</span>
+            <p class="mt-2 text-sm font-bold text-gray-900">${name}</p>
+            <p class="text-xs font-mono text-gray-500">READY TO PROCESS</p>
+        `;
+        dropZone.classList.add('bg-green-50', 'border-primary');
+        dropZone.classList.remove('border-border', 'bg-gray-50', 'border-dashed');
+        dropZone.classList.add('border-solid');
+    }
+
+    function resetDropZone() {
+        dzContent.innerHTML = `
+            <span class="material-symbols-outlined text-5xl text-gray-400">cloud_upload</span>
+            <div class="flex flex-col text-sm text-gray-600 justify-center">
+                <span class="font-bold text-header underline decoration-2 decoration-primary underline-offset-2">Click to upload</span>
+                <span class="mt-1">or drag and drop here</span>
+            </div>
+            <p class="text-xs font-mono text-gray-500 bg-white border border-border inline-block px-2 py-1 mt-2">MAX 10MB .PDF</p>
+        `;
+        dropZone.classList.remove('bg-green-50', 'border-primary', 'border-solid');
+        dropZone.classList.add('border-border', 'bg-gray-50', 'border-dashed');
+    }
+
+    function validateFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Only PDF files are accepted.');
+            return false;
+        }
+        if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+            alert(`File is too large. Maximum allowed size is ${MAX_SIZE_MB}MB.`);
+            return false;
+        }
+        return true;
+    }
+
+    fileInput.addEventListener('change', function () {
+        if (this.files && this.files.length > 0) {
+            const file = this.files[0];
+            if (!validateFile(file)) {
+                this.value = '';
+                resetDropZone();
+                return;
+            }
+            showFileSelected(file.name);
+        }
+    });
+
+    // Handle drag-drop onto zone
+    dropZone.addEventListener('drop', function (e) {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            const file = dt.files[0];
+            if (!validateFile(file)) {
+                resetDropZone();
+                return;
+            }
+            try {
+                fileInput.files = dt.files;
+            } catch (_) { /* Safari fallback */ }
+            showFileSelected(file.name);
+        }
+    }, false);
+
+    // ── Custom question count toggle ─────────────────────────────────────────
+    const qCountSelect      = document.getElementById('question-count');
+    const customCountWrap   = document.getElementById('custom-count-wrap');
+    const customCountInput  = document.getElementById('custom-count');
+
+    qCountSelect.addEventListener('change', function () {
+        if (this.value === 'custom') {
+            customCountWrap.classList.remove('hidden');
+            customCountInput.focus();
+        } else {
+            customCountWrap.classList.add('hidden');
+            customCountInput.value = '';
+        }
+    });
+
+    // ── Upload form submission ───────────────────────────────────────────────
+    const form       = document.getElementById('upload-form');
+    const submitBtn  = document.getElementById('submit-btn');
+    const submitIcon = document.getElementById('submit-icon');
+    const submitLbl  = document.getElementById('submit-label');
+    const statusBar  = document.getElementById('status-bar');
+
+    function setStatus(msg, isError) {
+        statusBar.textContent = msg;
+        statusBar.className = isError
+            ? 'px-4 py-3 border border-red-500 bg-red-50 font-mono text-sm text-red-800'
+            : 'px-4 py-3 border border-primary bg-green-50 font-mono text-sm text-green-800';
+    }
+
+    function setLoading(on) {
+        submitBtn.disabled = on;
+        if (on) {
+            submitIcon.textContent = 'hourglass_top';
+            submitLbl.textContent  = 'Processing…';
+            submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        } else {
+            submitIcon.textContent = 'settings_suggest';
+            submitLbl.innerHTML    = 'Process &amp; Start Test';
+            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+    }
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
-        errorMsg.textContent = '';
 
+        // File validation
         const file = fileInput.files[0];
         if (!file) {
-            errorMsg.textContent = 'Please select a PDF file.';
+            alert('Please select a PDF file before submitting.');
             return;
         }
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            errorMsg.textContent = 'Only PDF files are accepted.';
+        if (!validateFile(file)) return;
+
+        // Duration validation
+        const rawDuration = parseInt(document.getElementById('duration').value, 10);
+        if (isNaN(rawDuration) || rawDuration < 1 || rawDuration > 300) {
+            alert('Test duration must be between 1 and 300 minutes.');
+            document.getElementById('duration').focus();
             return;
         }
+        const duration = Math.min(300, Math.max(1, rawDuration));
+        localStorage.setItem('testDuration', duration);
+        localStorage.setItem('testPdfName', file.name);
 
-        uploadBtn.disabled = true;
-        statusMsg.textContent = 'Uploading and processing… please wait.';
+        // Question limit validation
+        const qVal = qCountSelect.value;
+        let questionLimit = null;
+        if (qVal === 'custom') {
+            const customVal = parseInt(customCountInput.value, 10);
+            if (isNaN(customVal) || customVal < 1 || customVal > 500) {
+                alert('Custom question count must be between 1 and 500.');
+                customCountInput.focus();
+                return;
+            }
+            questionLimit = customVal;
+        } else if (qVal !== 'auto') {
+            questionLimit = parseInt(qVal, 10);
+        }
 
+        // Build FormData
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('duration', duration);
+        formData.append('negative_marking', document.getElementById('negative-marking').checked ? '1' : '0');
+        if (questionLimit !== null) {
+            formData.append('question_limit', questionLimit);
+        }
+
+        setLoading(true);
+        setStatus('Uploading and processing… please wait.', false);
 
         try {
-            const res = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            const res  = await fetch('/upload', { method: 'POST', body: formData });
             const data = await res.json();
 
-            if (!res.ok) {
-                throw new Error(data.detail || 'Upload failed.');
-            }
+            if (!res.ok) throw new Error(data.detail || 'Upload failed.');
 
-            statusMsg.textContent = `Success! Extracted ${data.count} questions. Redirecting to test…`;
-            setTimeout(() => { window.location.href = data.redirect; }, 1000);
+            setStatus(`Success! Extracted ${data.count} question(s). Redirecting…`, false);
+            setTimeout(() => { window.location.href = data.redirect; }, 800);
 
         } catch (err) {
-            statusMsg.textContent = '';
-            errorMsg.textContent = 'Error: ' + err.message;
-            uploadBtn.disabled = false;
+            setStatus('Error: ' + err.message, true);
+            setLoading(false);
         }
     });
 </script>
-</body>
-</html>
+</body></html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+    darkMode: "class",
+    theme: {
+        extend: {
+            colors: { chrome:"#F3F4F6", header:"#1F2937", border:"#374151", primary:"#22C55E", "primary-hover":"#16A34A" },
+            fontFamily: { sans:["Arial","Helvetica","sans-serif"] },
+            borderRadius: { DEFAULT:"0px", none:"0px", sm:"0px", md:"0px", lg:"0px", xl:"0px", full:"0px" },
+            boxShadow: { brutalist:"4px 4px 0 0 #374151", "brutalist-sm":"2px 2px 0 0 #374151" }
+        }
+    }
+};
+</script>
+</head>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col">
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="bg-header border-b border-border sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+    <div class="flex items-center">
+        <div class="flex-shrink-0 flex items-center gap-3">
+            <a href="/"><div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div></a>
+            <a href="/"><span class="font-bold text-xl text-white tracking-tight">TestArena</span></a>
+        </div>
+        <nav class="hidden md:ml-12 md:flex space-x-8">
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/">Dashboard</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/exams">My Exams</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/reports">Reports</a>
+            <a class="inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-bold text-white" href="/settings">Settings</a>
+        </nav>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 border-l border-gray-600 pl-4">
+            <span class="material-symbols-outlined text-gray-300 text-xl">account_circle</span>
+            <span id="header-username" class="text-sm font-bold text-white hidden sm:block">—</span>
+        </div>
+        <button id="logout-btn" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-wide border border-gray-600 px-3 py-1 hover:border-gray-400 transition-colors">Logout</button>
+    </div>
+</div>
+</div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<main class="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+<div class="max-w-3xl mx-auto">
+
+    <div class="mb-8 border-l-4 border-header pl-4">
+        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-1">Settings</h1>
+        <p class="text-sm text-gray-500 font-mono">Your account and app info.</p>
+    </div>
+
+    <div class="space-y-6">
+
+        <!-- ── Account Info ─────────────────────────────────────────────── -->
+        <div class="bg-white border border-border shadow-brutalist overflow-hidden">
+            <div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center gap-2">
+                <span class="material-symbols-outlined text-header">person</span>
+                <h2 class="text-base font-black text-gray-900 uppercase tracking-wide">Account</h2>
+            </div>
+
+            <!-- Loading state -->
+            <div id="account-loading" class="p-8 flex items-center justify-center gap-2 text-gray-400 font-mono text-sm">
+                <span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                Loading...
+            </div>
+
+            <!-- Account details (filled by JS) -->
+            <div id="account-info" class="hidden">
+                <div class="divide-y divide-gray-100">
+                    <div class="px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-gray-400 text-lg">badge</span>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Username</p>
+                                <p id="info-username" class="text-sm font-bold text-gray-900 mt-0.5">—</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-gray-400 text-lg">mail</span>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                                <p id="info-email" class="text-sm font-bold text-gray-900 mt-0.5">—</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-gray-400 text-lg">quiz</span>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Tests Taken</p>
+                                <p id="info-tests" class="text-sm font-bold text-gray-900 mt-0.5">—</p>
+                            </div>
+                        </div>
+                        <a href="/exams" class="text-xs font-bold text-gray-500 hover:text-header uppercase tracking-wider">View All</a>
+                    </div>
+                    <div class="px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-gray-400 text-lg">shield_person</span>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Role</p>
+                                <p id="info-role" class="text-sm font-bold text-gray-900 mt-0.5">—</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Account Actions ──────────────────────────────────────────── -->
+        <div class="bg-white border border-border shadow-brutalist overflow-hidden">
+            <div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center gap-2">
+                <span class="material-symbols-outlined text-header">settings</span>
+                <h2 class="text-base font-black text-gray-900 uppercase tracking-wide">Actions</h2>
+            </div>
+            <div class="divide-y divide-gray-100">
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-bold text-gray-900">Logout</p>
+                        <p class="text-xs text-gray-500 font-mono mt-0.5">Sign out of your account on this device.</p>
+                    </div>
+                    <button id="logout-btn-2" class="px-4 py-2 border border-border bg-white text-gray-900 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 hover:shadow-brutalist-sm transition-all active:translate-x-px active:translate-y-px active:shadow-none">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Danger Zone ──────────────────────────────────────────────── -->
+        <div class="bg-white border border-red-400 shadow-[4px_4px_0_0_#f87171] overflow-hidden">
+            <div class="bg-red-50 px-6 py-4 border-b border-red-200 flex items-center gap-2">
+                <span class="material-symbols-outlined text-red-600">warning</span>
+                <h2 class="text-base font-black text-red-800 uppercase tracking-wide">Danger Zone</h2>
+            </div>
+            <div class="px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-bold text-gray-900">Delete All Test History</p>
+                    <p class="text-xs text-gray-500 font-mono mt-0.5">Permanently remove all your test attempts and results. This cannot be undone.</p>
+                </div>
+                <button id="delete-all-btn" class="flex-shrink-0 px-4 py-2 bg-white border border-red-400 text-red-700 text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors active:translate-x-px active:translate-y-px">
+                    Delete All History
+                </button>
+            </div>
+        </div>
+
+        <!-- ── About ────────────────────────────────────────────────────── -->
+        <div class="bg-white border border-border shadow-brutalist overflow-hidden">
+            <div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center gap-2">
+                <span class="material-symbols-outlined text-header">info</span>
+                <h2 class="text-base font-black text-gray-900 uppercase tracking-wide">About</h2>
+            </div>
+            <div class="px-6 py-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-header h-10 w-10 flex items-center justify-center text-white font-bold text-xl border border-border">T</div>
+                    <div>
+                        <p class="font-black text-gray-900 uppercase tracking-tight text-lg">TestArena</p>
+                        <p class="text-xs text-gray-400 font-mono">v1.0</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    Upload any MCQ PDF and instantly generate a timed mock test with a JEE/NEET-style CBT interface. Track your attempts, review your answers, and improve your performance.
+                </p>
+                <div class="flex gap-4 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <a href="/privacy" class="hover:text-header hover:underline decoration-2">Privacy</a>
+                    <a href="/terms" class="hover:text-header hover:underline decoration-2">Terms</a>
+                    <a href="/support" class="hover:text-header hover:underline decoration-2">Support</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────────── -->
+<footer class="bg-white border-t border-border py-8 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+    <p class="text-sm text-gray-500 font-mono">© 2025 TestArena Systems.</p>
+    <div class="flex space-x-6 text-sm font-bold text-gray-600 uppercase tracking-wide">
+        <a class="hover:text-header hover:underline decoration-2" href="/privacy">Privacy</a>
+        <a class="hover:text-header hover:underline decoration-2" href="/terms">Terms</a>
+        <a class="hover:text-header hover:underline decoration-2" href="/support">Support</a>
+    </div>
+</div>
+</footer>
+
+<script>
+/* ── Auth guard ─────────────────────────────────────────────────────────── */
+const token = localStorage.getItem('ta_token');
+if (!token) { window.location.href = '/login?next=/settings'; }
+
+document.getElementById('header-username').textContent =
+    localStorage.getItem('ta_username') || 'User';
+
+function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+function doLogout() {
+    localStorage.removeItem('ta_token');
+    localStorage.removeItem('ta_user_id');
+    localStorage.removeItem('ta_username');
+    window.location.href = '/login';
+}
+
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+document.getElementById('logout-btn-2').addEventListener('click', doLogout);
+
+/* ── Load account info ─────────────────────────────────────────────────── */
+async function loadAccountInfo() {
+    try {
+        const [userRes, attemptsRes] = await Promise.all([
+            fetch('/api/auth/me', { headers: authHeaders() }),
+            fetch('/api/attempts', { headers: authHeaders() }),
+        ]);
+
+        if (userRes.status === 401) { window.location.href = '/login?next=/settings'; return; }
+
+        const user     = userRes.ok ? await userRes.json() : null;
+        const attempts = attemptsRes.ok ? await attemptsRes.json() : [];
+
+        document.getElementById('account-loading').classList.add('hidden');
+        document.getElementById('account-info').classList.remove('hidden');
+
+        if (user) {
+            document.getElementById('info-username').textContent = user.username || '—';
+            document.getElementById('info-email').textContent    = user.email || '—';
+            document.getElementById('info-role').textContent     = user.is_admin ? 'Admin' : 'Student';
+        }
+
+        const completed = Array.isArray(attempts)
+            ? attempts.filter(a => a.status === 'completed').length
+            : 0;
+        const total = Array.isArray(attempts) ? attempts.length : 0;
+        document.getElementById('info-tests').textContent =
+            `${completed} completed` + (total > completed ? ` / ${total} total` : '');
+
+    } catch (_) {
+        document.getElementById('account-loading').textContent = 'Failed to load account info.';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadAccountInfo);
+
+/* ── Delete all history ─────────────────────────────────────────────────── */
+document.getElementById('delete-all-btn').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to delete ALL your test history?\n\nThis will permanently remove all attempts, answers, and results. This cannot be undone.')) return;
+
+    try {
+        const res = await fetch('/api/attempts/all', {
+            method: 'DELETE',
+            headers: authHeaders(),
+        });
+        if (res.status === 401) { window.location.href = '/login?next=/settings'; return; }
+        if (!res.ok) { alert('Failed to delete history.'); return; }
+
+        const data = await res.json();
+        alert(`Deleted ${data.deleted} test attempt${data.deleted !== 1 ? 's' : ''}.`);
+        loadAccountInfo();
+    } catch (_) {
+        alert('Network error while deleting.');
+    }
+});
+</script>
+</body>
+</html>

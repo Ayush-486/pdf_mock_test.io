@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TestArena - Exam Reports</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: { chrome:"#F3F4F6", header:"#1F2937", border:"#374151", primary:"#22C55E", "primary-hover":"#16A34A", surface:"#ffffff" },
+                fontFamily: { sans:["Arial","Helvetica","sans-serif"] },
+                borderRadius: { DEFAULT:"0px", none:"0px", sm:"0px", md:"0px", lg:"0px", xl:"0px", full:"0px" },
+                boxShadow: { 'brutalist':'4px 4px 0 0 #374151', 'brutalist-sm':'2px 2px 0 0 #374151' }
+            }
+        }
+    };
+</script>
+<style>body { font-family: Arial, Helvetica, sans-serif; }</style>
+</head>
+<body class="bg-chrome text-gray-900 min-h-screen flex flex-col antialiased">
+<header class="bg-header border-b border-border shadow-none sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between items-center h-16">
+<div class="flex items-center">
+<div class="flex-shrink-0 flex items-center gap-3">
+<a href="/"><div class="bg-white h-8 w-8 flex items-center justify-center text-header font-bold text-lg border border-border">T</div></a>
+<a href="/"><span class="font-bold text-xl text-white tracking-tight">TestArena</span></a>
+</div>
+<nav class="hidden md:ml-12 md:flex space-x-8">
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/">Upload</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/exams">My Exams</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-bold text-white" href="/reports">Reports</a>
+<a class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-300 hover:text-white hover:border-gray-400 transition-colors" href="/settings">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 border-l border-gray-600 pl-4">
+<span class="material-symbols-outlined text-gray-300 text-xl">account_circle</span>
+<span id="header-username" class="text-sm font-bold text-white hidden sm:block">—</span>
+</div>
+<button id="logout-btn" class="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-wide border border-gray-600 px-3 py-1 hover:border-gray-400 transition-colors">Logout</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+<div class="max-w-6xl mx-auto">
+<div class="mb-8 border-l-4 border-header pl-4">
+<h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-2">Exam Reports</h1>
+<p class="text-lg text-gray-600">View and review your completed test attempts.</p>
+</div>
+
+<!-- Loading state -->
+<div id="loading-state" class="bg-white border border-border shadow-brutalist p-16 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-4xl text-gray-400 animate-spin mb-4">sync</span>
+<p class="text-sm text-gray-500 font-mono">Loading reports…</p>
+</div>
+
+<!-- Empty state -->
+<div id="empty-state" class="hidden bg-white border border-border shadow-brutalist p-16 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-6xl text-gray-300 mb-4">bar_chart</span>
+<h3 class="text-xl font-black text-gray-900 uppercase mb-2">No Completed Tests</h3>
+<p class="text-sm text-gray-500 font-mono mb-6">Complete a test to see your reports here.</p>
+<a href="/"><button class="inline-flex items-center px-6 py-3 border border-border text-sm font-bold text-white bg-primary hover:bg-primary-hover shadow-brutalist uppercase tracking-wider transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
+<span class="material-symbols-outlined text-lg mr-2">upload_file</span>Start a Test
+</button></a>
+</div>
+
+<!-- Reports list -->
+<div id="reports-content" class="hidden">
+<div class="bg-white border border-border shadow-brutalist overflow-hidden">
+<div class="bg-gray-100 px-6 py-4 border-b border-border flex items-center gap-2">
+<span class="material-symbols-outlined text-header">list_alt</span>
+<h2 class="text-lg font-bold text-gray-900 uppercase tracking-wide">Completed Tests</h2>
+</div>
+<div id="reports-list" class="divide-y divide-gray-200"></div>
+</div>
+</div>
+
+</div>
+</main>
+<footer class="bg-white border-t border-border py-8 mt-auto">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-sm text-gray-500 font-mono">© 2023 TestArena Systems.</p>
+<div class="flex space-x-6 text-sm font-bold text-gray-600 uppercase tracking-wide">
+<a class="hover:text-header hover:underline decoration-2" href="/privacy">Privacy Policy</a>
+<a class="hover:text-header hover:underline decoration-2" href="/terms">Terms</a>
+<a class="hover:text-header hover:underline decoration-2" href="/support">Support</a>
+</div>
+</div>
+</footer>
+<script>
+// ── Auth guard ────────────────────────────────────────────────────────────────
+const token = localStorage.getItem('ta_token');
+if (!token) { window.location.href = '/login?next=/reports'; }
+
+document.getElementById('header-username').textContent =
+    localStorage.getItem('ta_username') || 'User';
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('ta_token');
+    localStorage.removeItem('ta_user_id');
+    localStorage.removeItem('ta_username');
+    window.location.href = '/login';
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+function fmt(isoStr) {
+    if (!isoStr) return '—';
+    try {
+        return new Date(isoStr + (isoStr.endsWith('Z') ? '' : 'Z')).toLocaleString(undefined, {
+            year:'numeric', month:'short', day:'numeric',
+            hour:'2-digit', minute:'2-digit'
+        });
+    } catch (_) { return isoStr; }
+}
+
+function metaChip(icon, text) {
+    return `<div class="flex items-center gap-1 text-sm text-gray-600">
+        <span class="material-symbols-outlined text-lg">${icon}</span>
+        <span class="font-mono">${text}</span>
+    </div>`;
+}
+
+// ── Load reports ──────────────────────────────────────────────────────────────
+async function loadReports() {
+    try {
+        const res = await fetch('/api/attempts', { headers: authHeaders() });
+        if (res.status === 401) { window.location.href = '/login?next=/reports'; return; }
+        if (!res.ok) throw new Error('Failed to load reports.');
+        const attempts = await res.json();
+
+        document.getElementById('loading-state').classList.add('hidden');
+
+        const completed = attempts.filter(a => a.status === 'completed');
+
+        if (completed.length === 0) {
+            document.getElementById('empty-state').classList.remove('hidden');
+            return;
+        }
+
+        const sorted = [...completed].sort((a, b) =>
+            new Date(b.completed_at || 0) - new Date(a.completed_at || 0)
+        );
+
+        const list = document.getElementById('reports-list');
+        list.innerHTML = '';
+
+        sorted.forEach(a => {
+            const scoreHtml = (a.score !== null && a.score !== undefined)
+                ? `<span class="px-2 py-0.5 bg-green-100 text-green-800 border border-green-200 text-xs font-bold uppercase">Score: ${a.score}</span>`
+                : `<span class="px-2 py-0.5 bg-gray-100 text-gray-500 border border-gray-200 text-xs font-mono uppercase">No Score</span>`;
+
+            const row = document.createElement('div');
+            row.className = 'p-6 hover:bg-gray-50 transition-colors';
+            row.innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 bg-gray-100 text-gray-700 border border-gray-300 text-xs font-bold uppercase">Completed</span>
+                            ${scoreHtml}
+                        </div>
+                        <h3 class="text-base font-black text-gray-900 uppercase mt-1 mb-2">${a.pdf_name}</h3>
+                        <div class="flex flex-wrap items-center gap-4">
+                            ${metaChip('schedule', a.duration + ' min')}
+                            ${metaChip('format_list_numbered', a.total_questions + ' questions')}
+                            ${metaChip('event', fmt(a.completed_at))}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="/result?id=${a.id}">
+                            <button class="inline-flex items-center px-5 py-2.5 border border-border bg-white text-gray-900 text-sm font-bold uppercase tracking-wider hover:bg-gray-50 hover:shadow-brutalist-sm transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
+                                View Result <span class="material-symbols-outlined ml-2 text-lg">bar_chart</span>
+                            </button>
+                        </a>
+                    </div>
+                </div>`;
+            list.appendChild(row);
+        });
+
+        document.getElementById('reports-content').classList.remove('hidden');
+
+    } catch (err) {
+        document.getElementById('loading-state').innerHTML = `
+            <span class="material-symbols-outlined text-4xl text-red-400 mb-2">error</span>
+            <p class="text-sm text-red-600 font-mono">${err.message}</p>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadReports);
+</script>
+</body></html>

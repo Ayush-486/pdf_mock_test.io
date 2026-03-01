@@ -58,12 +58,12 @@ pip install -r requirements.txt
 ### 5. Run the server
 
 ```powershell
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
 ### 6. Open the browser
 
-Go to: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+Go to: [http://127.0.0.1:8001](http://127.0.0.1:8001)
 
 ---
 
